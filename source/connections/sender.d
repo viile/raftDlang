@@ -1,8 +1,8 @@
-module connection.sender;
+module connections.sender;
 
 import std.socket;
 
-import connection;
+import connections;
 import raft;
 
 class Sender

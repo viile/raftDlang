@@ -11,7 +11,7 @@ import std.array;
 import std.string;
 
 import raft;
-import connection;
+import connections;
 
 class Node
 {
