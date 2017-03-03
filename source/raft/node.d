@@ -4,6 +4,7 @@ import std.stdio;
 import std.socket;
 import std.datetime;
 import core.time;
+import core.stdc.time;
 import std.conv;
 import std.file;
 import std.random;
@@ -23,7 +24,7 @@ class Node
 	int currentTerm;
 	int votedFor;
 	int votes;
-	string[] log;
+	string[int] log;
 	int leaderId;
 	int commitIndex;
 	int lastApplied;
@@ -35,6 +36,7 @@ class Node
 	Duration timeout;
 	Socket socket;
 	Socket clientSocket;
+	bool clientSocketState;
 	int leader;
 	bool close;
 	bool exiting;
@@ -58,8 +60,7 @@ class Node
 
 	void NodeStart()
 	{
-		writeContent("./Node_"~myProperties.id.to!string~"/Debug.txt",
-				"Time\tCommitID\tLogID\tNodeID\tLogs");
+		writeContent("Time\tCommitID\tLogID\tNodeID\tLogs");
 		state = "Follower";
 		int x,y;
 		while(connectIndex <= nodeList.len)
@@ -79,16 +80,27 @@ class Node
 
 	void NodeRunning()
 	{
-	
+		while(true)
+		{
+			if(clientSocketState == false)
+			{
+				
+			}
+		}
 	}
 	void NodeClose()
 	{
-	
+		socket.close();
+		clientSocket.close();
+		clientSocketState = false;
+		reciever.CloseConnection();
+		sender.CloseConnection();
 	}
 
-	private void writeContent(string file,string content)
+	private void writeContent(string content,string file = null)
 	{
-		if(!file.length)return;
+		if(!file.length)
+			file = "./Node_"~myProperties.id.to!string~"/Debug.txt";
 		if(!content.length)return;
 		if(!file.isFile){
 			auto info = split(file,"/");
@@ -98,7 +110,27 @@ class Node
 				mkdirRecurse(path);
 			}
 		}
-		file.write(file,"");
+		file.write(file,content);
 	}
+	private void writeLog()
+	{
+		string str = "\n" ~ getCurrUnixStramp ~ "\t" ~ commitIndex.to!string ~ "\t" ~
+			lastLogIndex.to!string ~ "\t" ~ myProperties.id.to!string ~ "\t";
+		string content;
+		foreach(k,v;log)
+		{
+			//content ~= v.command ~ "\t";
+		}
+		content ~= "\n";
+		writeContent(str~content);
+		writeContent(content,"./Node_"~myProperties.id.to!string~"/Latest.txt");
+	}
+	private string getCurrUnixStramp()
+	{
+		SysTime currentTime = cast(SysTime)Clock.currTime();
+		time_t time = currentTime.toUnixTime;
+		return time.to!string;
+	}
+
 }
 

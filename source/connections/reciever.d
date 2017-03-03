@@ -19,4 +19,15 @@ class Reciever
 	{
 	
 	}
+	void TryRecieve()
+	{
+	
+	}
+	void CloseConnection()
+	{
+		foreach(k,v;sockets)
+		{
+			v.close();
+		}
+	}
 }

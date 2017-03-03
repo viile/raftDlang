@@ -1,5 +1,7 @@
 module raft.nodeList;
 
+import std.conv;
+
 import raft;
 
 class NodeList
