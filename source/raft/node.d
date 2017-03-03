@@ -10,9 +10,12 @@ import std.file;
 import std.random;
 import std.array;
 import std.string;
+import core.thread;
+import std.json;
 
 import raft;
 import connections;
+import states;
 
 class Node
 {
@@ -24,7 +27,7 @@ class Node
 	int currentTerm;
 	int votedFor;
 	int votes;
-	string[int] log;
+	Log[int] log;
 	int leaderId;
 	int commitIndex;
 	int lastApplied;
@@ -84,7 +87,60 @@ class Node
 		{
 			if(clientSocketState == false)
 			{
+				auto sets = new SocketSet();
+				sets.add(socket);
+				if(socket.select(sets,sets,sets))
+					clientSocket = socket.accept();
+
+			}
+
+			if(clientSocketState == true)
+			{
+				clientSocket.blocking(true);
+				ubyte[1024] data;
+				auto received = clientSocket.receive(data);
+				if(received)
+				{
+					string command = cast(string)data[0..received];
+					writeln("received : ",command);
+					if(command == "Sleep"){
+						Thread.sleep(dur!("seconds")(5));	
+					} else if (command == "Quit") {
+						return;
+					} else if (command == "CloseSocket") {
+						clientSocket.close();
+						clientSocketState = false;
+					} else if (state == "Leader") {
+						lastLogIndex++;
+						log[lastLogIndex] = new Log(currentTerm,command);
+						writeLog();
+					} else {
+						clientSocket.send(cast(ubyte[])[leaderId]);
+					}
+
+				}
+			}
+
+			if(state == "Leader" && getCurrUnixStrampInt >= leader+2)
+			{
+				leader = 10000000;
+			}
+
+			JSONValue[] messages = reciever.TryRecieve();
+
+			foreach(msg;messages){
+				int drop = uniform(0,30);
+				if(drop == 0)
+					continue;
+				if(msg["Type"].str == "RequestVote"){
 				
+				} else if (msg["Type"].str == "ResponseVote" && msg["Type"].str == "Candidate"){
+
+				} else if (msg["Type"].str == "AppendEntries") {
+				
+				} else if (msg["Type"].str == "EntryResult") {
+				
+				} 
 			}
 		}
 	}
@@ -125,11 +181,19 @@ class Node
 		writeContent(str~content);
 		writeContent(content,"./Node_"~myProperties.id.to!string~"/Latest.txt");
 	}
-	private string getCurrUnixStramp()
+	private time_t currUnixStramp()
 	{
 		SysTime currentTime = cast(SysTime)Clock.currTime();
 		time_t time = currentTime.toUnixTime;
-		return time.to!string;
+		return time;	
+	}
+	private string getCurrUnixStramp()
+	{
+		return currUnixStramp.to!string;
+	}
+	private int getCurrUnixStrampInt()
+	{
+		return currUnixStramp.to!int;
 	}
 
 }
