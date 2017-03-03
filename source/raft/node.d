@@ -16,6 +16,7 @@ import std.json;
 import raft;
 import connections;
 import states;
+import messages;
 
 class Node
 {
@@ -133,6 +134,9 @@ class Node
 				if(drop == 0)
 					continue;
 				if(msg["Type"].str == "RequestVote"){
+					if(msg["ResponseVote"]["Term"].str.to!int <= currentTerm){
+						Message _msg = new Message("ResponseVote",new ResponseVote(currentTerm,"False"));
+					}
 				
 				} else if (msg["Type"].str == "ResponseVote" && msg["Type"].str == "Candidate"){
 

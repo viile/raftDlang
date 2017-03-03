@@ -4,5 +4,6 @@ import messages;
 
 class RequestVote : Msg
 {
+	int term;
 
 }
