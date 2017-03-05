@@ -6,8 +6,8 @@ import raft;
 
 class NodeList
 {
-	public Node[] list;
-	public void addNode(Node node)
+	public NodeProperties[] list;
+	public void addNode(NodeProperties node)
 	{
 		this.list ~= node;
 	}

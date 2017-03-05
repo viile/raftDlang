@@ -33,8 +33,8 @@ class Node
 	int commitIndex;
 	int lastApplied;
 	int lastLogIndex;
-	int[] nextIndex;
-	int[] matchIndex;
+	int[int] nextIndex;
+	int[int] matchIndex;
 	Duration timeoutInterval = dur!"msecs"(150);
 	Duration heartbeatInterval = dur!"msecs"(75);
 	Duration timeout;
@@ -176,11 +176,71 @@ class Node
 					} else if (msg["AppendEntries"]["PrevLogIndex"].str.to!int != 0 && (msg["AppendEntries"]["PrevLogIndex"].str.to!int in log) && log[msg["AppendEntries"]["PrevLogIndex"].str.to!int].term != msg["AppendEntries"]["PrevLogTerm"].str.to!int) {
 						Message _msg = new Message("EntryResult",new EntryResult(currentTerm,"False",myProperties.id,lastLogIndex));
 						sender.SendMessage(msg["AppendEntries"]["LeaderId"].str.to!int,_msg);
+						leaderId = msg["AppendEntries"]["LeaderId"].str.to!int;
+					} else {
+						leaderId = msg["AppendEntries"]["LeaderId"].str.to!int;
+						if(msg["AppendEntries"]["Term"].str.to!int >= currentTerm){
+							state = "Follower";
+							currentTerm = msg["AppendEntries"]["Term"].str.to!int;
+							votedFor = msg["AppendEntries"]["LeaderId"].str.to!int;
+						}
+						timeout = timeoutInterval + dur!"msecs"(uniform(0,150));
+						bool contains = false;
+						if(state != "Follower")
+							writeln("TO DO : unknow");
+						bool delentries = false;
+						int j;
+						for(int i = msg["AppendEntries"]["PrevLogIndex"].str.to!int + 1;;i++)
+						{
+							if(delentries)
+							{
+								if(i in log)
+									log = unset!(Log[int],int)(log,i);
+								else
+									break;
+							} else if(!(j.to!string in msg["AppendEntries"]["Entries"])) {
+								delentries = true;
+								lastLogIndex = i-1;
+								if(i in log)
+									log = unset!(Log[int],int)(log,i);
+							} else {
+								//to do log update
+								log[i] = new Log(currentTerm,msg["AppendEntries"]["Entries"][j].str);
+								j++;
+							}
+						}
+						Message _msg = new Message("EntryResult",new EntryResult(currentTerm,"True",myProperties.id,lastLogIndex));
+						sender.SendMessage(msg["AppendEntries"]["LeaderId"].str.to!int,_msg);
+						if(j==0)writeLog();
+						if(msg["AppendEntries"]["LeaderCommit"].str.to!int > commitIndex){
+							if(lastLogIndex < msg["AppendEntries"]["LeaderCommit"].str.to!int)
+								commitIndex = lastLogIndex;
+							else 
+								commitIndex = msg["AppendEntries"]["LeaderCommit"].str.to!int;
+						}
 					}
 				
 				} else if (msg["Type"].str == "EntryResult") {
-				
+					writeln("id EntryResult");
+					if(msg["EntryResult"]["Term"].str.to!int>currentTerm){
+						state = "Follower";
+						currentTerm = msg["EntryResult"]["Term"].str.to!int;
+						timeout = timeoutInterval + dur!"msecs"(uniform(0,150));
+					}else if(msg["EntryResult"]["Success"].str == "False") {
+						if(nextIndex[msg["EntryResult"]["id"].str.to!int]>0)
+							nextIndex[msg["EntryResult"]["id"].str.to!int] -= 1;
+					}else if (msg["EntryResult"]["Success"].str == "True"){
+						nextIndex[msg["EntryResult"]["id"].str.to!int] = msg["EntryResult"]["index"].str.to!int;
+						matchIndex[msg["EntryResult"]["id"].str.to!int] = msg["EntryResult"]["index"].str.to!int;
+					}
 				} 
+				if(commitIndex>lastApplied){
+					lastApplied++;
+					if(state == "Leader")
+						clientSocket.send(log[lastApplied].command);
+					writeLog();
+				}
+				//if(state)
 			}
 		}
 	}
@@ -235,6 +295,13 @@ class Node
 	{
 		return currUnixStramp.to!int;
 	}
-
+	private T unset(T,F)(T content, F key)
+	{
+		T ret;
+		foreach(k,v;content){
+			if(k != key)ret[k] = v;
+		}
+		return ret;
+	}
 }
 
