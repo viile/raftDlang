@@ -240,7 +240,11 @@ class Node
 						clientSocket.send(log[lastApplied].command);
 					writeLog();
 				}
-				//if(state)
+				if(state == "Candidate" && votes >= (nodeList.len/2)+1){
+					state = "Leader";
+					Message _msg = new Message("AppendEntries",new AppendEntries(currentTerm,myProperties.id,lastLogIndex,lastLogIndex>0?log[lastLogIndex].term:0,0,commitIndex));	
+					//sender.SendMessage()
+				}
 			}
 		}
 	}
