@@ -4,7 +4,7 @@ import messages;
 
 abstract class Msg
 {
-
+	string toJson();
 }
 
 class Message
@@ -16,5 +16,9 @@ class Message
 	{
 		this.type = type;
 		this.msg = msg;
+	}
+	string toJson()
+	{
+		return msg.toJson;
 	}
 }

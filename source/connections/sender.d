@@ -4,6 +4,7 @@ import std.socket;
 
 import connections;
 import raft;
+import messages;
 
 class Sender
 {
@@ -18,9 +19,9 @@ class Sender
 	{
 	
 	}
-	void SendMessage()
+	void SendMessage(int id, Message msg)
 	{
-	
+		clients[id].send(msg.toJson ~ "#");
 	}
 	void BroadCastMessage()
 	{

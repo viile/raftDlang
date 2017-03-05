@@ -135,12 +135,48 @@ class Node
 					continue;
 				if(msg["Type"].str == "RequestVote"){
 					if(msg["ResponseVote"]["Term"].str.to!int <= currentTerm){
+						writeln("false");
 						Message _msg = new Message("ResponseVote",new ResponseVote(currentTerm,"False"));
+						sender.SendMessage(msg["ResponseVote"]["CandidateId"].str.to!int,_msg);
+					} else if(lastLogIndex > msg["ResponseVote"]["LastLogIndex"].str.to!int || lastLogIndex > 0 && log[lastLogIndex].term != msg["ResponseVote"]["LastLogTerm"].str.to!int) {
+						writeln("changed to follower ");
+						Message _msg = new Message("ResponseVote",new ResponseVote(currentTerm,"False"));
+						sender.SendMessage(msg["ResponseVote"]["CandidateId"].str.to!int,_msg);
+						state = "Follower";
+						currentTerm = msg["ResponseVote"]["Term"].str.to!int;
+						timeout = timeoutInterval + dur!"msecs"(uniform(0,150));
+					} else {
+						state = "Follower";
+						currentTerm = msg["ResponseVote"]["Term"].str.to!int;
+						votedFor = msg["ResponseVote"]["CandidateId"].str.to!int;
+						timeout = timeoutInterval + dur!"msecs"(uniform(0,150));
+						Message _msg = new Message("ResponseVote",new ResponseVote(currentTerm,"True"));
+						sender.SendMessage(msg["ResponseVote"]["CandidateId"].str.to!int,_msg);
 					}
 				
 				} else if (msg["Type"].str == "ResponseVote" && msg["Type"].str == "Candidate"){
-
+					writeln("id Response");
+					if(msg["ResponseVote"]["VoteGranted"].str == "True"){
+						votes += 1;
+					}else if (msg["ResponseVote"]["Term"].str.to!int > currentTerm){
+						state = "Follower";
+						currentTerm = msg["ResponseVote"]["Term"].str.to!int;
+						votedFor = msg["ResponseVote"]["CandidateId"].str.to!int;
+						timeout = timeoutInterval + dur!"msecs"(uniform(0,150));
+					}
 				} else if (msg["Type"].str == "AppendEntries") {
+					writeln("id AppendEntries");
+					if(msg["AppendEntries"]["Term"].str.to!int < currentTerm){
+						Message _msg = new Message("EntryResult",new EntryResult(currentTerm,"False",myProperties.id,lastLogIndex));
+						sender.SendMessage(msg["AppendEntries"]["LeaderId"].str.to!int,_msg);
+					} else if(msg["AppendEntries"]["PrevLogIndex"].str.to!int != 0 && !(msg["AppendEntries"]["PrevLogIndex"].str.to!int in log)){
+						Message _msg = new Message("EntryResult",new EntryResult(currentTerm,"False",myProperties.id,lastLogIndex));
+						sender.SendMessage(msg["AppendEntries"]["LeaderId"].str.to!int,_msg);
+						leaderId = msg["AppendEntries"]["LeaderId"].str.to!int;
+					} else if (msg["AppendEntries"]["PrevLogIndex"].str.to!int != 0 && (msg["AppendEntries"]["PrevLogIndex"].str.to!int in log) && log[msg["AppendEntries"]["PrevLogIndex"].str.to!int].term != msg["AppendEntries"]["PrevLogTerm"].str.to!int) {
+						Message _msg = new Message("EntryResult",new EntryResult(currentTerm,"False",myProperties.id,lastLogIndex));
+						sender.SendMessage(msg["AppendEntries"]["LeaderId"].str.to!int,_msg);
+					}
 				
 				} else if (msg["Type"].str == "EntryResult") {
 				
