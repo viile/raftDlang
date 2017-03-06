@@ -23,7 +23,7 @@ class Sender
 	{
 		clients[id].send(msg.toJson ~ "#");
 	}
-	void BroadCastMessage()
+	void BroadCastMessage(Message msg)
 	{
 	
 	}
